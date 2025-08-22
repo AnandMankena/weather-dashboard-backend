@@ -19,12 +19,11 @@ app.use(cors({
     'http://127.0.0.1:3000',
     'https://weather-dashboard-frontend.vercel.app'
   ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
+  credentials: true
 }));
-(express.json());
+
+app.use(express.json());                         
+app.use(express.urlencoded({ extended: true }));
 
 // Initialize database tables
 const initializeDatabase = async () => {
