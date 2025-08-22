@@ -1,103 +1,82 @@
-import express from 'express';
+import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import axios from 'axios';
 
-const router = express.Router();
+const router = Router();
 const prisma = new PrismaClient();
 
 // Get all cities
 router.get('/', async (req, res) => {
   try {
-    const cities = await prisma.city.findMany({
-      orderBy: { isDefault: 'desc' }
-    });
+    const cities = await prisma.city.findMany();
     res.json(cities);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching cities:', error);
     res.status(500).json({ error: 'Failed to fetch cities' });
   }
 });
 
-// Add a new city
+// Add new city
 router.post('/', async (req, res) => {
-  const { name } = req.body;
-
-  if (!name) {
-    return res.status(400).json({ error: 'City name is required' });
-  }
-
   try {
-    // Get city coordinates from OpenWeatherMap
-    const geoResponse = await axios.get(
-      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(name)}&limit=1&appid=${process.env.OPENWEATHER_API_KEY}`
-    );
-
-    if (geoResponse.data.length === 0) {
-      return res.status(404).json({ error: 'City not found' });
+    const { name, country } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'City name is required' });
     }
 
-    const cityData = geoResponse.data[0];
-
-    // Check if city already exists
-    const existingCity = await prisma.city.findUnique({
-      where: {
-        name_country: {
-          name: cityData.name,
-          country: cityData.country
-        }
+    const city = await prisma.city.create({
+      data: { 
+        name,
+        country: country || null
       }
     });
-
-    if (existingCity) {
-      return res.status(409).json({ error: 'City already exists' });
-    }
-
-    // Create new city
-    const newCity = await prisma.city.create({
-      data: {
-        name: cityData.name,
-        country: cityData.country,
-        lat: cityData.lat,
-        lon: cityData.lon
-      }
-    });
-
-    res.status(201).json(newCity);
-  } catch (error) {
+    
+    res.status(201).json(city);
+  } catch (error: any) {
     console.error('Error adding city:', error);
-    res.status(500).json({ error: 'Failed to add city' });
+    if (error.code === 'P2002') {
+      res.status(409).json({ error: 'City already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to add city' });
+    }
   }
 });
 
-// Delete a city
-router.delete('/:id', async (req, res) => {
-  const cityId = parseInt(req.params.id);
-
-  if (isNaN(cityId)) {
-    return res.status(400).json({ error: 'Invalid city ID' });
-  }
-
+// Get city by ID
+router.get('/:id', async (req, res) => {
   try {
+    const cityId = parseInt(req.params.id);
     const city = await prisma.city.findUnique({
-      where: { id: cityId }
+      where: { id: cityId }  // Use id instead of name_country
     });
-
+    
     if (!city) {
       return res.status(404).json({ error: 'City not found' });
     }
+    
+    res.json(city);
+  } catch (error: any) {
+    console.error('Error fetching city:', error);
+    res.status(500).json({ error: 'Failed to fetch city' });
+  }
+});
 
-    if (city.isDefault) {
-      return res.status(400).json({ error: 'Cannot delete default city' });
-    }
-
+// Delete city
+router.delete('/:id', async (req, res) => {
+  try {
+    const cityId = parseInt(req.params.id);
     await prisma.city.delete({
-      where: { id: cityId }
+      where: { id: cityId }  // Use id instead of name_country
     });
-
-    res.json({ message: 'City deleted successfully' });
-  } catch (error) {
+    
+    res.status(204).send();
+  } catch (error: any) {
     console.error('Error deleting city:', error);
-    res.status(500).json({ error: 'Failed to delete city' });
+    if (error.code === 'P2025') {
+      res.status(404).json({ error: 'City not found' });
+    } else {
+      res.status(500).json({ error: 'Failed to delete city' });
+    }
   }
 });
 

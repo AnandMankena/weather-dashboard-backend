@@ -1,52 +1,47 @@
-import express from 'express';
-import { WeatherService } from '../services/weatherService';
+import { Router } from 'express';
+import { weatherService } from '../services/weatherService'; // Fixed import
 import { PrismaClient } from '@prisma/client';
-import type { City } from '@prisma/client';
 
-const router = express.Router();
-const weatherService = new WeatherService();
+const router = Router();
 const prisma = new PrismaClient();
 
-// Get weather for a specific city
-router.get('/city/:id', async (req, res) => {
-  const cityId = parseInt(req.params.id);
-
-  if (isNaN(cityId)) {
-    return res.status(400).json({ error: 'Invalid city ID' });
-  }
-
+// Get weather for all cities
+router.get('/', async (req, res) => {
   try {
-    const weatherData = await weatherService.getCurrentWeather(cityId);
-    res.json(weatherData);
-  } catch (error) {
-    console.error('Error fetching weather:', error);
-    if (error instanceof Error && error.message === 'City not found') {
-      res.status(404).json({ error: 'City not found' });
-    } else {
-      res.status(500).json({ error: 'Failed to fetch weather data' });
-    }
+    const cities = await prisma.city.findMany();
+    const weatherPromises = cities.map(city =>
+      weatherService.getWeatherData(city).catch((error: any) => ({ // Fixed error type
+        city: { id: city.id, name: city.name, country: city.country || 'Unknown' },
+        current: null,
+        forecast: [],
+        error: error.message
+      }))
+    );
+    
+    const weatherData = await Promise.all(weatherPromises);
+res.json(weatherData.filter(data => data && data.current !== null));
+  } catch (error: any) { // Fixed error type
+    res.status(500).json({ error: 'Failed to fetch weather data' });
   }
 });
 
-// Get weather for all cities
-router.get('/all', async (req, res) => {
+// Get weather for specific city
+router.get('/:cityId', async (req, res) => {
   try {
-    const cities: City[] = await prisma.city.findMany({
-      orderBy: { isDefault: 'desc' }
-    });
-
-    const weatherPromises = cities.map((city: City) => 
-      weatherService.getCurrentWeather(city.id).catch(error => ({
-        error: true,
-        city: { id: city.id, name: city.name, country: city.country },
-        message: error.message
-      }))
-    );
-
-    const results = await Promise.all(weatherPromises);
-    res.json(results);
-  } catch (error) {
-    console.error('Error fetching weather for all cities:', error);
+    const cityId = parseInt(req.params.cityId);
+    const city = await prisma.city.findUnique({ where: { id: cityId } });
+    
+    if (!city) {
+      return res.status(404).json({ error: 'City not found' });
+    }
+    
+    const weatherData = await weatherService.getWeatherData(city);
+    if (!weatherData) {
+      return res.status(404).json({ error: 'Weather data not available' });
+    }
+    
+    res.json(weatherData);
+  } catch (error: any) { // Fixed error type
     res.status(500).json({ error: 'Failed to fetch weather data' });
   }
 });

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql"  
   url      = env("DATABASE_URL")
 }
 
@@ -11,11 +11,11 @@ model City {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   country   String?
+  lat       Float?   
+  lon       Float?   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isDefault Boolean  @default(false)
-
-  @@map("cities")
 }
 
 model WeatherData {
