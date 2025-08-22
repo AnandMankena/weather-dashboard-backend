@@ -1,35 +1,33 @@
-// File: backend/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model City {
-  id          Int      @id @default(autoincrement())
-  name        String
-  country     String
-  lat         Float
-  lon         Float
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  country   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDefault Boolean  @default(false)
 
-  weatherCache WeatherCache[]
-
-  @@unique([name, country])
+  @@map("cities")
 }
 
-model WeatherCache {
+model WeatherData {
   id          Int      @id @default(autoincrement())
-  cityId      Int      @unique
-  weatherData String   // JSON string
-  forecastData String  // JSON string
+  cityId      Int
+  temperature Float
+  description String
+  humidity    Int
+  windSpeed   Float
+  pressure    Int
+  icon        String
   cachedAt    DateTime @default(now())
-  expiresAt   DateTime
 
-  city        City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  @@map("weather_data")
 }
