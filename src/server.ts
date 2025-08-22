@@ -13,11 +13,18 @@ const prisma = new PrismaClient();
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-frontend-domain.vercel.app'] 
-    : 'http://localhost:3000'
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173', 
+    'http://127.0.0.1:3000',
+    'https://weather-dashboard-frontend.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 }));
-app.use(express.json());
+(express.json());
 
 // Initialize database tables
 const initializeDatabase = async () => {
