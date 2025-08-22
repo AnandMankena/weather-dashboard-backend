@@ -22,12 +22,14 @@ app.use(express.json());
 // Initialize database tables
 const initializeDatabase = async () => {
   try {
-    // Try to create tables if they don't exist
+    // Create table with capital "City" (what Prisma expects)
     await prisma.$executeRaw`
-      CREATE TABLE IF NOT EXISTS cities (
+      CREATE TABLE IF NOT EXISTS "City" (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) UNIQUE NOT NULL,
         country VARCHAR(255),
+        lat FLOAT,
+        lon FLOAT,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "isDefault" BOOLEAN DEFAULT FALSE
@@ -61,6 +63,6 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🌤️  Server running on port ${PORT}`);
+  console.log(`🌤️ Server running on port ${PORT}`);
   console.log(`🔗 API URL: ${process.env.NODE_ENV === 'production' ? 'Railway URL' : `http://localhost:${PORT}`}`);
 });
