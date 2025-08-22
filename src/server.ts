@@ -8,7 +8,7 @@ import { cityRoutes } from './routes/cityRoutes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8000; // Railway uses PORT env variable
+const PORT = process.env.PORT || 8000;
 const prisma = new PrismaClient();
 
 // Middleware
@@ -19,10 +19,29 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Database connection check
-prisma.$connect()
-  .then(() => console.log('✅ Connected to PostgreSQL'))
-  .catch(err => console.error('❌ Database connection failed:', err));
+// Initialize database tables
+const initializeDatabase = async () => {
+  try {
+    // Try to create tables if they don't exist
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS cities (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        country VARCHAR(255),
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "isDefault" BOOLEAN DEFAULT FALSE
+      );
+    `;
+    
+    console.log('✅ Database tables initialized');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+  }
+};
+
+// Initialize database on startup
+initializeDatabase();
 
 // Routes
 app.use('/api/weather', weatherRoutes);
@@ -39,11 +58,6 @@ app.get('/', (req, res) => {
     message: 'Weather Dashboard API',
     endpoints: ['/api/cities', '/api/weather', '/health']
   });
-});
-
-// Graceful shutdown
-process.on('beforeExit', async () => {
-  await prisma.$disconnect();
 });
 
 app.listen(PORT, () => {
